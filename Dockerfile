@@ -1,33 +1,32 @@
-FROM ubuntu:16.04
-MAINTAINER Erling G. M. Kristiansen <egkristi@gmail.com>
+FROM ubuntu:24.04
 
-# set env vars
-ENV container docker
-ENV LC_ALL C
-ENV DEBIAN_FRONTEND noninteractive
+LABEL maintainer="Erling G. M. Kristiansen <egkristi@gmail.com>"
+LABEL description="DNS benchmark tool using dnsperf and custom scripts"
 
-# configure apt behaviour
-RUN echo "APT::Get::Install-Recommends 'false'; \n\
-  APT::Get::Install-Suggests 'false'; \n\
-  APT::Get::Assume-Yes "true"; \n\
-  APT::Get::force-yes "true";" > /etc/apt/apt.conf.d/00-general
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=C.UTF-8
 
-# systemd tweaks
-RUN rm -rf /lib/systemd/system/getty*;
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      dnsutils \
+      dnsperf \
+      curl \
+      ca-certificates \
+      iproute2 \
+      procps \
+      python3 \
+      python3-pip \
+      jq \
+      bc \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# install
-RUN apt-get update
-RUN apt-get install -y apt-utils
+COPY benchmark.sh /usr/local/bin/benchmark
+RUN chmod +x /usr/local/bin/benchmark
 
-# install namebench
-RUN apt-get install -y namebench
+COPY resolvers.txt /etc/namebench/resolvers.txt
 
-# install typical requirements for testing
-RUN apt-get install -y procps ssl-cert ca-certificates apt-transport-https python sudo curl net-tools vim iproute unzip vim wget
+WORKDIR /results
 
-# cleanup
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# finally run script on startup
-CMD ["/bin/bash"]
+ENTRYPOINT ["benchmark"]
+CMD ["--help"]
